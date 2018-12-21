@@ -29,7 +29,7 @@ public class Controller {
     }
 
     private Controller() {
-        loadNumbers();
+
     }
 
     private void loadNumbers() {
@@ -197,16 +197,20 @@ public class Controller {
 
     public void readAllFiles(String path) throws TooFewDigitsException {
 
+        loadNumbers();
+
         File folder = new File(path);
 
         for (File fileEntry : folder.listFiles()) {
             if (fileEntry.isDirectory()) {
                 //listFilesForFolder(fileEntry);
             } else {
-                if(fileEntry.getName().contains(".tsv")) {
-                    System.out.println("---START " + fileEntry.getName() + "---");
-                    readFile(fileEntry.getPath());
-                    System.out.println("---FINISH " + fileEntry.getName() + "---");
+                if(!fileEntry.getName().contains("corr")) {
+                    if (fileEntry.getName().contains(".tsv")) {
+                        System.out.println("---START " + fileEntry.getName() + "---");
+                        readFile(fileEntry.getPath());
+                        System.out.println("---FINISH " + fileEntry.getName() + "---");
+                    }
                 }
                 //System.out.println(fileEntry.getName());
             }
