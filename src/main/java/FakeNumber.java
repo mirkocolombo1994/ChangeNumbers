@@ -7,8 +7,8 @@ public class FakeNumber {
     private String number;
     private TypeNumber type;
 
-    public FakeNumber(TypeNumber type, String number) throws TooFewDigitsException {
-        this.number = changeFinals(number,defaultFinalDigits,false, null);
+    public FakeNumber(TypeNumber type, String fakeNumber) {
+        this.number = fakeNumber;
         this.type = type;
     }
 
@@ -99,5 +99,13 @@ public class FakeNumber {
         return type;
     }
 
+    @Override
+    public String toString() {
+        return number + ";" + getStringType();
+    }
 
+    private String getStringType() {
+        if(this.type.equals(TypeNumber.CALLED)) return "CD";
+        else return "CG";
+    }
 }

@@ -40,7 +40,7 @@ public class UserInterface {
 
 
         //lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)\\CDR_20181124.tsv");
-        lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)");
+        lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (4)");
 
 
         hideTrue = new JRadioButton("True");
@@ -51,8 +51,8 @@ public class UserInterface {
         hideFalse.setActionCommand("0");
         hideButtons = new ButtonGroup();
         hideButtons.add(hideFalse);
-        hideButtons.add(hideTrue);
-        hideTrue.setSelected(true);
+        //hideButtons.add(hideTrue);
+        hideFalse.setSelected(true);
         hideTrue.addActionListener(e -> hideCharText.setEnabled(true));
         hideFalse.addActionListener(e -> hideCharText.setEnabled(false));
 
@@ -136,7 +136,7 @@ public class UserInterface {
     }
 
     public static void main (String[] args){
-        UserInterface ui = new UserInterface();
+        new UserInterface();
     }
 
 }

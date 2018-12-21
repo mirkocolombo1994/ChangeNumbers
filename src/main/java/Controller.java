@@ -20,12 +20,41 @@ public class Controller {
 
     private String firstLine;
 
+    private Path oldNumbersPath = Paths.get("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)\\corr");
+
+    private boolean dbModified = false;
+
     static Controller getInstance() {
         return ourInstance;
     }
 
     private Controller() {
+        loadNumbers();
+    }
 
+    private void loadNumbers() {
+        try {
+
+            if(Files.notExists(oldNumbersPath)){
+                Files.createFile(oldNumbersPath);
+            }
+
+            List<String> lines = Files.readAllLines(oldNumbersPath,StandardCharsets.UTF_8);
+
+            for (String line : lines) {
+                String[] data = line.split(";");
+                FakeNumber fn;
+                TypeNumber tn;
+                if(data[2].equals("CD")) tn = TypeNumber.CALLED;
+                else tn = TypeNumber.CALLING;
+
+                fn = new FakeNumber(tn,data[1]);
+                addToMap(data[0],fn);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void readFile(String filePath) throws TooFewDigitsException {
@@ -37,87 +66,50 @@ public class Controller {
 
             int fileFragmentation = 1;
             int numLine=0;
+            int numLinePartitioned=0;
 
-            String partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
+            String partitionedFileName;
 
-
-            if(lines.size() < dimension){
-                for (String line : lines) {
-                    String newLine;
-                    newLine = lineAnalizator(line,numLine);
-                    lines.set(numLine,newLine);
-                    numLine++;
-                }
-            }else{
-                int numLinePartitioned=0;
-                for (String line : lines) {
-
-                    String newLine;
-                    newLine = lineAnalizator(line,numLine);
-                    linesPartitioned.add(newLine);
-                    numLine++;
-                    numLinePartitioned++;
-
-                    if(numLine%dimension==0){
-                        Path newFilePath =  Paths.get(partitionedFileName);
-                        File newFile = new File(newFilePath.toString());
-                        newFile.createNewFile();
-
-                        Files.write(newFilePath,linesPartitioned,StandardCharsets.UTF_8);
-
-                        linesPartitioned = new ArrayList<>(dimension);
-
-                        linesPartitioned.add(firstLine);
-
-                        System.gc();
-
-                        fileFragmentation++;
-                        numLinePartitioned=0;
-                    }
-                }
-            }
-
-            if(fileFragmentation==1){
-                Files.write(path,lines,StandardCharsets.UTF_8);
-            }
-            else{
-                Path newFilePath =  Paths.get(partitionedFileName);
-                File newFile = new File(newFilePath.toString());
-                newFile.createNewFile();
-
-                Files.write(newFilePath,linesPartitioned,StandardCharsets.UTF_8);
-
-                System.gc();
-            }
-
-            System.gc();
-            //Garbage collector
-
-            /*
-            List<String> newLines = new ArrayList<>(1000000);
-            long numLineOld = 0;
-            int numLineNew = 0;
             for (String line : lines) {
                 String newLine;
-                newLine = lineAnalizator(line,numLineOld);
-                newLines.set(numLineNew, newLine);
-                lines.set((int) numLineOld,newLine);
-                numLineOld++;
-                numLineNew++;
+                if(numLine==0){
+                    newLine = firstLineAnalyzator(line);
+                }else{
+                    newLine = lineAnalyzator(line);
+                    numLinePartitioned++;
+                }
+                linesPartitioned.add(newLine);
+                numLine++;
 
-                if(numLineOld%1000000 == 0){
-                    path.getParent();
-                    Path newPath = Paths.get(path.getParent() + path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_1" + path.getFileName().toString().substring(path.getFileName().toString().indexOf(".")))
-                    File newFile = new File(newPath.toString());
+                if(numLinePartitioned%dimension==0){
+                    partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
+                    Path newFilePath =  Paths.get(partitionedFileName);
+                    File newFile = new File(newFilePath.toString());
                     newFile.createNewFile();
-                    Files.write(newPath,newLines);
-                    //TODO Create new file with name filename + "_1"
+
+                    Files.write(newFilePath,linesPartitioned,StandardCharsets.UTF_8);
+                    linesPartitioned = new ArrayList<>(dimension);
+                    linesPartitioned.add(firstLine);
+
+                    System.gc();
+
+                    fileFragmentation++;
+                    numLinePartitioned=0;
                 }
             }
 
-            Files.write(path,lines,StandardCharsets.UTF_8);
+            partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
+            Path newFilePath =  Paths.get(partitionedFileName);
+            File newFile = new File(newFilePath.toString());
+            newFile.createNewFile();
+
+            Files.write(newFilePath,linesPartitioned,StandardCharsets.UTF_8);
+
             System.gc();
-            //Garbage collector*/
+
+            storeMap();
+
+            //Garbage collector
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
@@ -125,7 +117,27 @@ public class Controller {
         }
     }
 
+    private void storeMap() {
+        if(dbModified) {
+            List<String> map = new ArrayList<>();
 
+            for (String key : numberMap.keySet()) {
+                map.add(key + ";" + numberMap.get(key).toString());
+            }
+
+            try {
+                Files.write(oldNumbersPath, map, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        dbModified=false;
+    }
+
+    /**
+     * Select and set the columns that we are interested, the calling and the called number columns
+     * @param data The data contained in the file that has to be analyzed
+     */
     private void selectColumns(String[] data){
         for(int i = 0; i< data.length; i++){
             if(data[i].equals("CALLING_NUMBER")) positions[0]=i;
@@ -133,45 +145,52 @@ public class Controller {
         }
     }
 
-    private String lineAnalizator(String line, long numLine) throws TooFewDigitsException {
+    /**
+     * Gives the new line to put in the file, with the number changed
+     * @param line the line of the file to be analyzed
+     * @return
+     * @throws TooFewDigitsException
+     */
+    private String lineAnalyzator(String line) throws TooFewDigitsException {
         String[] data = line.split("\t");
+        for(int i =0; i<2; i++){
+            try {
+                String oldNumber = data[positions[i]];
+                if(numberMap.containsKey(oldNumber))
+                    data[positions[i]]=numberMap.get(oldNumber).getNumber();
+                else if (oldNumber.length() > 3) {
+                    dbModified = true;
+                    FakeNumber fknbr = new FakeNumber(TypeNumber.CALLED,oldNumber,false);
 
-        if (numLine==0) {
-            selectColumns(data);
-            firstLine=line;
-            return line;
+                    addToMap(oldNumber,fknbr);
+                    data[positions[i]] = fknbr.getNumber();
 
-        } else {
-            for(int i =0; i<2; i++){
-                try {
-                    String oldNumber = data[positions[i]];
-                    if(numberMap.containsKey(oldNumber))
-                        data[positions[i]]=numberMap.get(oldNumber).getNumber();
-                    else if (oldNumber.length() > 3) {
 
-                        FakeNumber fknbr = new FakeNumber(TypeNumber.CALLED,oldNumber);
 
-                        numberMap.put(oldNumber,fknbr);
-                        data[positions[i]] = fknbr.getNumber();
-                    }
-                }catch (ArrayIndexOutOfBoundsException ex){
-                    //Simply the program have not found neither calling nor called number.
                 }
+            }catch (ArrayIndexOutOfBoundsException ex){
+                //Simply the program have not found neither calling nor called number.
             }
-
-            StringBuilder newDataString = new StringBuilder();
-            for(int i=0;i<data.length-1;i++){
-                newDataString.append(data[i]);
-                newDataString.append("\t");
-            }
-            newDataString.append(data[data.length-1]);
-
-            return newDataString.toString();
-
         }
+
+        StringBuilder newDataString = new StringBuilder();
+        for(int i=0;i<data.length-1;i++){
+            newDataString.append(data[i]);
+            newDataString.append("\t");
+        }
+        newDataString.append(data[data.length-1]);
+
+        return newDataString.toString();
     }
 
-    String test(String filePath) {
+    private String firstLineAnalyzator(String firstLine){
+        String[] data = firstLine.split("\t");
+        selectColumns(data);
+        this.firstLine=firstLine;
+        return firstLine;
+    }
+
+    private String test(String filePath) {
         Path path = Paths.get(filePath);
         return path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_1" + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
     }
@@ -193,6 +212,14 @@ public class Controller {
             }
         }
 
+
+    }
+
+
+    private void addToMap(String oldNumber, FakeNumber fakeNumber){
+        numberMap.put(oldNumber,fakeNumber);
+
+        System.out.println("PUT " + oldNumber);
 
     }
 
