@@ -1,6 +1,4 @@
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,11 +6,13 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 
-public class Controller {
+class Controller {
     private static Controller ourInstance = new Controller();
 
     private static final int dimension = 1000000;
+    //private static final int dimension = 9;
 
     private HashMap<String,FakeNumber> numberMap = new HashMap<>();
 
@@ -23,6 +23,10 @@ public class Controller {
     private Path oldNumbersPath = Paths.get("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)\\corr");
 
     private boolean dbModified = false;
+
+    private boolean dbFirstLoad = true;
+
+    private File[] selectedFiles = null;
 
     static Controller getInstance() {
         return ourInstance;
@@ -39,9 +43,13 @@ public class Controller {
                 Files.createFile(oldNumbersPath);
             }
 
-            List<String> lines = Files.readAllLines(oldNumbersPath,StandardCharsets.UTF_8);
+            BufferedReader br = new BufferedReader(new FileReader(oldNumbersPath.toString()));
 
-            for (String line : lines) {
+            String line = br.readLine();
+
+            System.out.println("Start loading db");
+
+            while (line!=null){
                 String[] data = line.split(";");
                 FakeNumber fn;
                 TypeNumber tn;
@@ -50,18 +58,22 @@ public class Controller {
 
                 fn = new FakeNumber(tn,data[1]);
                 addToMap(data[0],fn);
+                line = br.readLine();
             }
+
+            System.out.println("Finish loading db");
 
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    public void readFile(String filePath) throws TooFewDigitsException {
-        try {
+    private void readFile(String filePath) throws TooFewDigitsException {
+        /*try {
 
             Path path = Paths.get(filePath);
-            List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+            //List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
+            //Files.newBufferedReader(path,StandardCharsets.UTF_8);
             List<String> linesPartitioned = new ArrayList<>(dimension);
 
             int fileFragmentation = 1;
@@ -69,19 +81,31 @@ public class Controller {
             int numLinePartitioned=0;
 
             String partitionedFileName;
+            String newLine;
 
-            for (String line : lines) {
-                String newLine;
+            BufferedReader br = new BufferedReader(new FileReader(filePath));
+
+            String nextLine = br.readLine();
+
+            while (nextLine!=null){
+
                 if(numLine==0){
-                    newLine = firstLineAnalyzator(line);
+                    newLine = firstLineAnalyzator(nextLine);
                 }else{
-                    newLine = lineAnalyzator(line);
+                    newLine = lineAnalyzator(nextLine);
                     numLinePartitioned++;
                 }
                 linesPartitioned.add(newLine);
                 numLine++;
+                //System.out.println(nextLine);
+                nextLine= br.readLine();
 
-                if(numLinePartitioned%dimension==0){
+
+                if(numLinePartitioned%(dimension/2)==0 && numLinePartitioned!=0) System.out.println("____________HALF________");
+
+                if(numLinePartitioned%10==0 && numLinePartitioned!=0) System.out.println(numLinePartitioned + " lines done!");
+
+                if(numLinePartitioned%dimension==0 && numLinePartitioned!=0){
                     partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
                     Path newFilePath =  Paths.get(partitionedFileName);
                     File newFile = new File(newFilePath.toString());
@@ -96,6 +120,8 @@ public class Controller {
                     fileFragmentation++;
                     numLinePartitioned=0;
                 }
+
+
             }
 
             partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
@@ -114,7 +140,94 @@ public class Controller {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        }*/
+
+        List<String> linesPartitioned = new ArrayList<>(dimension);
+        Path path = Paths.get(filePath);
+
+        int fileFragmentation = 1;
+        int numLine=0;
+        int numLinePartitioned=0;
+
+
+        String newLine;
+
+        FileInputStream inputStream = null;
+        Scanner scanner = null;
+
+        String nextLine;
+
+        try {
+
+            inputStream = new FileInputStream(filePath);
+            scanner = new Scanner(inputStream,"UTF-8");
+
+            while (scanner.hasNextLine()){
+               /*PUT THE CODE HERE*/
+                nextLine = scanner.nextLine();
+                if(numLine==0){
+                    newLine = firstLineAnalyzator(nextLine);
+                }else{
+                    newLine = lineAnalyzator(nextLine);
+                    numLinePartitioned++;
+                }
+                linesPartitioned.add(newLine);
+                numLine++;
+
+                System.out.println(numLinePartitioned);
+
+                if(numLinePartitioned%(dimension/2)==0 && numLinePartitioned!=0) System.out.println("____________HALF________");
+
+                if(numLinePartitioned%dimension==0 && numLinePartitioned!=0){
+                    Files.write(createNewFile(path,fileFragmentation),linesPartitioned,StandardCharsets.UTF_8);
+                    linesPartitioned.clear();
+                    //linesPartitioned = new ArrayList<>(dimension);
+                    linesPartitioned.add(firstLine);
+
+                    System.gc();
+
+                    fileFragmentation++;
+                    numLinePartitioned=0;
+                }
+
+                System.gc();
+            }
+
+            if(numLinePartitioned!=0) {
+                Files.write(createNewFile(path,fileFragmentation), linesPartitioned, StandardCharsets.UTF_8);
+            }
+
+            System.gc();
+
+            storeMap();
+
+            if(scanner.ioException() !=null){
+                throw scanner.ioException();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }finally {
+            if(inputStream!=null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(scanner!=null) scanner.close();
         }
+
+
+    }
+
+    private Path createNewFile(Path path, int fileFragmentation) throws IOException {
+        String partitionedFileName;
+        partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
+        Path newFilePath =  Paths.get(partitionedFileName);
+        File newFile = new File(newFilePath.toString());
+        newFile.createNewFile();
+        return newFilePath;
     }
 
     private void storeMap() {
@@ -161,12 +274,9 @@ public class Controller {
                 else if (oldNumber.length() > 3) {
                     dbModified = true;
                     FakeNumber fknbr = new FakeNumber(TypeNumber.CALLED,oldNumber,false);
-
                     addToMap(oldNumber,fknbr);
+                    //System.out.println("Add " + oldNumber);
                     data[positions[i]] = fknbr.getNumber();
-
-
-
                 }
             }catch (ArrayIndexOutOfBoundsException ex){
                 //Simply the program have not found neither calling nor called number.
@@ -190,41 +300,75 @@ public class Controller {
         return firstLine;
     }
 
-    private String test(String filePath) {
-        Path path = Paths.get(filePath);
-        return path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_1" + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
+    private void test(String filePath){
+        FileInputStream inputStream = null;
+        Scanner scanner = null;
+        try {
+
+            inputStream = new FileInputStream(filePath);
+            scanner = new Scanner(inputStream,"UTF-8");
+
+            while (scanner.hasNextLine()){
+                String line = scanner.nextLine();
+                System.out.println(line);
+            }
+
+            if(scanner.ioException() !=null){
+                throw scanner.ioException();
+            }
+
+
+        } catch (IOException e) {
+                e.printStackTrace();
+        }finally {
+            if(inputStream!=null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(scanner!=null) scanner.close();
+        }
+
     }
 
-    public void readAllFiles(String path) throws TooFewDigitsException {
+    void readAllFiles(String path) throws TooFewDigitsException {
 
-        loadNumbers();
+        if(selectedFiles==null) throw new NullPointerException();
 
-        File folder = new File(path);
+        loadDb();
 
-        for (File fileEntry : folder.listFiles()) {
-            if (fileEntry.isDirectory()) {
-                //listFilesForFolder(fileEntry);
-            } else {
-                if(!fileEntry.getName().contains("corr")) {
-                    if (fileEntry.getName().contains(".tsv")) {
-                        System.out.println("---START " + fileEntry.getName() + "---");
-                        readFile(fileEntry.getPath());
-                        System.out.println("---FINISH " + fileEntry.getName() + "---");
-                    }
+        for (File selectedFile : selectedFiles) {
+            if(!selectedFile.getName().contains("corr")){
+                if (selectedFile.getName().contains(".tsv")) {
+                    System.out.println("---START " + selectedFile.getName() + "---");
+                    readFile(selectedFile.getPath());
+                    //test(fileEntry.getPath());
+                    System.out.println("---FINISH " + selectedFile.getName() + "---");
                 }
-                //System.out.println(fileEntry.getName());
             }
         }
 
+    }
 
+    private void loadDb() {
+        if(dbFirstLoad){
+            loadNumbers();
+            dbFirstLoad=false;
+        }
     }
 
 
     private void addToMap(String oldNumber, FakeNumber fakeNumber){
         numberMap.put(oldNumber,fakeNumber);
 
-        System.out.println("PUT " + oldNumber);
+        //System.out.println("PUT " + oldNumber);
 
+    }
+
+    public void setPath(File[] selectedFiles) {
+        this.selectedFiles = selectedFiles;
     }
 
     //TODO Create a file with all the real numbers and the corrisponding fake number with the type (called or calling)

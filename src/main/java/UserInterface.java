@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 
@@ -40,7 +41,7 @@ public class UserInterface {
 
 
         //lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)\\CDR_20181124.tsv");
-        lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (4)");
+        lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (6)");
 
 
         hideTrue = new JRadioButton("True");
@@ -61,11 +62,24 @@ public class UserInterface {
         finalDigitsBox = new JComboBox<>(finalDigits);
 
         pathFinder = new JButton("Find");
+        pathFinder.addActionListener((e) -> chosePath());
         //TODO search for the folder finder
 
         goButton = new JButton("Go");
         goButton.addActionListener(e -> changeNumbers());
     }
+
+    private void chosePath() {
+        JFileChooser chooser = new JFileChooser();
+        FileNameExtensionFilter filter = new FileNameExtensionFilter("TSV File","tsv");
+        chooser.setFileFilter(filter);
+        chooser.setMultiSelectionEnabled(true);
+        int returnVal = chooser.showOpenDialog(null);
+        if(returnVal==JFileChooser.APPROVE_OPTION){
+            controller.setPath(chooser.getSelectedFiles());
+        }
+    }
+
 
     private void createWindow(){
         JPanel panel = new JPanel();
@@ -126,6 +140,9 @@ public class UserInterface {
         try {
             controller.readAllFiles(lSelectPath.getText());
             //controller.readFile(lSelectPath.getText());
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(frame,"No Files Selected");
         } catch (TooFewDigitsException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(frame,"Too few digits");
