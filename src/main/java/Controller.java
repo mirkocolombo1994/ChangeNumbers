@@ -184,42 +184,6 @@ class Controller implements Runnable{
 
         String[] newnumbers = database.changeNumbers(numbers,hideFinaldigits, finalDigitsToChange);
 
-        /*for (Integer position : positions) {
-            int duplicatePosition = positions.length;
-            boolean foundDuplicate = false;
-            int indexNumberToChange = -1;
-            if (!possibleDuplicates.isEmpty()) {
-                for (int j = 0; j < possibleDuplicates.size(); j++) {
-                    try {
-                        indexNumberToChange = data[position].indexOf(possibleDuplicates.get(j));
-                        if (indexNumberToChange > -1) {
-                            if (j < duplicatePosition) duplicatePosition = j;
-                            break;
-                        }
-                    } catch (ArrayIndexOutOfBoundsException e) {
-                        //System.out.println(line);
-                        //no problem, in the file it doesn't exist the numbers
-                    }
-                }
-            }
-            if (foundDuplicate) {
-                try {
-                    data[position] = data[position].substring(0, indexNumberToChange) + data[positions[duplicatePosition]];
-                } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
-                    System.out.println(line);
-                }
-                //data[positions[i]].replace(possibleDuplicates.get(duplicatePosition),data[duplicatePosition]);
-            } else {
-                try {
-                    if (data[position].length() > 3) possibleDuplicates.add(data[position]);
-                    data[position] = changeNumber(data[position]);
-
-                } catch (ArrayIndexOutOfBoundsException e) {
-                    //System.out.println(line);
-                }
-            }
-        }*/
-
         for (int i = 0; i < positions.length; i++) {
             try{
                 if (!data[positions[i]].equals("null"))

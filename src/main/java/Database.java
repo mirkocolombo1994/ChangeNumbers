@@ -10,6 +10,8 @@ import java.util.Objects;
  */
 class Database {
 
+    public static final int LENGTH = 4;
+
     //Dimension in bytes. So 100000000 = 100 MB
     private static final long dimensionDatabase = 100000000;
 
@@ -129,7 +131,7 @@ class Database {
         else if (newNumberMap.containsKey(oldNumber))
             //newData = newNumberMap.get(oldNumber).getNumber();
             newData = newNumberMap.get(oldNumber);
-        else if (oldNumber.length() > 3) {
+        else if (oldNumber.length() > LENGTH) {
             dbModified = true;
             FakeNumber fknbr;
             do {
@@ -141,15 +143,23 @@ class Database {
             fknbr.clear();
         }
 
-        if(hideFinaldigits){
-            StringBuilder finale = new StringBuilder();
-            for (int i = 0; i < finalDigitsToChange; i++) {
-                finale.append("*");
+        if(hideFinaldigits && newData.length()>LENGTH){
+            try {
+                newData = hideFinalDigits(newData,finalDigitsToChange);
+            }catch (StringIndexOutOfBoundsException sobe){
+
             }
-            newData = newData.substring(0,newData.length()-finalDigitsToChange) + finale.toString();
         }
 
         return newData;
+    }
+
+    private String hideFinalDigits(String number, int finalDigits){
+        StringBuilder finale = new StringBuilder();
+        for (int i = 0; i < finalDigits; i++) {
+            finale.append("*");
+        }
+        return number.substring(0, number.length() - finalDigits) + finale.toString();
     }
 
     /**
