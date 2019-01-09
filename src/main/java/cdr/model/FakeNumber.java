@@ -1,33 +1,29 @@
+package cdr.model;
+
 import java.util.Random;
 
 public class FakeNumber {
 
-    private static final String defaultChar = "*";
     private static final int defaultFinalDigits = 3;
     private String number;
-    private TypeNumber type;
     private boolean called;
 
     public FakeNumber(boolean called, String fakeNumber){
         this.number = fakeNumber;
-        if(called) this.called=true;
-        else this.called=false;
+        this.called = called;
     }
 
     public FakeNumber(TypeNumber type, String number) {
         this.number = changeFinals(number,defaultFinalDigits);
-        this.type = type;
     }
 
-    public FakeNumber(String number, int finalDigits){
+    FakeNumber(String number, int finalDigits){
         this.number = changeFinals(number,finalDigits);
-        this.type=TypeNumber.CALLING;
         called=true;
     }
 
     public FakeNumber(TypeNumber type, String number, int finalDigits) {
         this.number = changeFinals(number,finalDigits);
-        this.type=type;
     }
 
 
@@ -48,20 +44,6 @@ public class FakeNumber {
     }
 
     /**
-     * Get the hidden final for the number
-     * @param finalDigits the number of final digits
-     * @param hideChar the hide char
-     * @return the hidden final to add to the number
-     */
-    private String hideFinal(int finalDigits, String hideChar){
-        StringBuilder hiding = new StringBuilder();
-        for (int i = 0; i < finalDigits; i++) {
-            hiding.append(hideChar);
-        }
-        return hiding.toString();
-    }
-
-    /**
      * Given a number, this method change or hide with a char, the final digits.
      * @param number the number to change
      * @param finalDigits then number of final digits to change
@@ -79,10 +61,6 @@ public class FakeNumber {
         return number;
     }
 
-    public TypeNumber getType() {
-        return type;
-    }
-
     @Override
     /*public String toString() {
         return number + ";" + getStringType();
@@ -92,13 +70,7 @@ public class FakeNumber {
         return number + ";" + called;
     }
 
-    private String getStringType() {
-        if(this.type.equals(TypeNumber.CALLED)) return "CD";
-        else return "CG";
-    }
-
     void clear() {
         this.number=null;
-        this.type=null;
     }
 }

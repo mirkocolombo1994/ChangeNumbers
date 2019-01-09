@@ -1,9 +1,12 @@
+package cdr.userInterface;
+
+import cdr.Controller;
+
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.util.Objects;
 
 public class UserInterface implements Runnable{
 
@@ -28,7 +31,7 @@ public class UserInterface implements Runnable{
 
     private final static Integer[] finalDigits = {3,4};
 
-    UserInterface(){
+    public UserInterface(){
         initializeElements();
         createWindow();
     }
@@ -71,11 +74,6 @@ public class UserInterface implements Runnable{
     }
 
     private void databasePath() {
-        JFileChooser chooser = new JFileChooser();
-        int returnVal = chooser.showOpenDialog(null);
-        if(returnVal==JFileChooser.APPROVE_OPTION){
-            controller.setDatabase(chooser.getSelectedFile());
-        }
     }
 
     private void choseFiles() {
@@ -139,7 +137,7 @@ public class UserInterface implements Runnable{
     }
 
     private void changeNumbers() {
-        JOptionPane.showMessageDialog(frame,finalDigitsBox.getSelectedItem().toString());
+        JOptionPane.showMessageDialog(frame,Objects.requireNonNull(finalDigitsBox.getSelectedItem()).toString());
         //JOptionPane.showMessageDialog(frame,hideButtons.getSelection().getActionCommand());
         //JOptionPane.showMessageDialog(frame,hideCharText.getText());
         //JOptionPane.showMessageDialog(frame,lSelectPath.getText());

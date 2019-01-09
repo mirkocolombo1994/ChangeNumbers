@@ -1,3 +1,5 @@
+package cdr.model;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -8,9 +10,9 @@ import java.util.Objects;
 /**
  * Created by Mirko Colombo on 09/01/2019.
  */
-class Database {
+public class Database {
 
-    public static final int LENGTH = 4;
+    private static final int LENGTH = 4;
 
     //Dimension in bytes. So 100000000 = 100 MB
     private static final long dimensionDatabase = 100000000;
@@ -18,7 +20,7 @@ class Database {
     private static Database ourInstance = null;
     private boolean dbModified = false;
 
-    static Database getInstance(){
+    public static Database getInstance(){
         if(ourInstance==null) ourInstance = new Database();
         return ourInstance;
     }
@@ -30,7 +32,7 @@ class Database {
     private static int databaseTrunk = 1;
     private static final String databaseRoot = "D:\\aewwc\\Desktop\\ORange\\CDR";
 
-     void loadDataFile(){
+     public void loadDataFile(){
         boolean present = false;
 
         if(databasePath ==null){
@@ -122,7 +124,7 @@ class Database {
         return numberMap.get(key);
     }
 
-    String getNewNumber(String oldNumber, int finalDigitsToChange, boolean hideFinaldigits) {
+    public String getNewNumber(String oldNumber, int finalDigitsToChange, boolean hideFinaldigits) {
         String newData = oldNumber;
 
         if(containsKey(oldNumber))
@@ -135,7 +137,7 @@ class Database {
             dbModified = true;
             FakeNumber fknbr;
             do {
-                //TODO remove TypeNumber 'cause a number can both be a called and a calling number
+                //TODO remove cdr.model.TypeNumber 'cause a number can both be a called and a calling number
                 fknbr = new FakeNumber(oldNumber, finalDigitsToChange);
             }while (oldNumber.equals(fknbr.getNumber()));
             newNumberMap.put(oldNumber,fknbr.getNumber());
@@ -146,8 +148,7 @@ class Database {
         if(hideFinaldigits && newData.length()>LENGTH){
             try {
                 newData = hideFinalDigits(newData,finalDigitsToChange);
-            }catch (StringIndexOutOfBoundsException sobe){
-
+            }catch (StringIndexOutOfBoundsException ignored){
             }
         }
 
@@ -165,7 +166,7 @@ class Database {
     /**
      * Stores the map in database files and transfer the newNumberMap (containing all the numbers contained in the last file) into the numberMap ( that contains all the numbers loaded in memory)
      */
-     void storeMap() {
+    public void storeMap() {
         if(dbModified) {
 
             File file = new File(getDatabasePath().toString());

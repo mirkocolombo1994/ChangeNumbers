@@ -1,8 +1,10 @@
+package cdr;
+
 import java.io.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-class Controller implements Runnable{
+public class Controller implements Runnable{
     private static Controller ourInstance = null;
 
     private static final int dimension = 1000000;
@@ -15,16 +17,14 @@ class Controller implements Runnable{
 
     private DatabaseController database = DatabaseController.getInstance();
 
-    private boolean dbFirstLoad = true;
-
     private File[] selectedFiles = null;
 
-    static Controller getInstance() {
+    public static Controller getInstance() {
         if(ourInstance==null) ourInstance = new Controller();
         return ourInstance;
     }
 
-    void setFinalDigitsToChange(int finalDigitsToChange) {
+    public void setFinalDigitsToChange(int finalDigitsToChange) {
         this.finalDigitsToChange = finalDigitsToChange;
     }
 
@@ -32,7 +32,7 @@ class Controller implements Runnable{
 
     }
 
-    void setHideFinaldigits(boolean hideFinaldigits) {
+    public void setHideFinaldigits(boolean hideFinaldigits) {
         this.hideFinaldigits = hideFinaldigits;
     }
 
@@ -130,13 +130,6 @@ class Controller implements Runnable{
 
     }
 
-    private void loadDb() {
-        if(dbFirstLoad){
-            database.loadDataFile();
-            dbFirstLoad=false;
-        }
-    }
-
     private Path createNewFile(Path path, int fileFragmentation) throws IOException {
         String partitionedFileName;
         partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
@@ -213,12 +206,8 @@ class Controller implements Runnable{
         selectColumns(data);
     }
 
-    void setPath(File[] selectedFiles) {
+    public void setPath(File[] selectedFiles) {
         this.selectedFiles = selectedFiles;
-    }
-
-    void setDatabase(File selectedFile) {
-        //this.oldNumbersPath = selectedFile.toPath();
     }
 
     /**
@@ -255,7 +244,7 @@ class Controller implements Runnable{
                     readFile(selectedFile.toPath());
                     System.out.println("---FINISH " + selectedFile.getName() + "---");
                     System.out.println("------------STORING NUMBERS-----------");
-                    //database.storeMap();
+                    database.storeMap();
                     System.out.println("--------NUMBER STORED----------------");
                 }
             }
