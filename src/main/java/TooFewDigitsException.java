@@ -1,2 +1,2 @@
-public class TooFewDigitsException extends Throwable {
+class TooFewDigitsException extends Throwable {
 }

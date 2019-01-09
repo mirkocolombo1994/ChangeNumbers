@@ -1,224 +1,140 @@
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
 
-class Controller {
-    private static Controller ourInstance = new Controller();
+class Controller implements Runnable{
+    private static Controller ourInstance = null;
 
     private static final int dimension = 1000000;
-    //private static final int dimension = 9;
 
-    private HashMap<String,FakeNumber> numberMap = new HashMap<>();
+    private Integer[] positions = new Integer[3];
 
-    private Integer[] positions = new Integer[2];
+    private boolean hideFinaldigits = false;
 
-    private String firstLine;
+    private int finalDigitsToChange = 3;
 
-    private Path oldNumbersPath = Paths.get("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)\\corr");
-
-    private boolean dbModified = false;
+    private DatabaseController database = DatabaseController.getInstance();
 
     private boolean dbFirstLoad = true;
 
     private File[] selectedFiles = null;
 
     static Controller getInstance() {
+        if(ourInstance==null) ourInstance = new Controller();
         return ourInstance;
+    }
+
+    void setFinalDigitsToChange(int finalDigitsToChange) {
+        this.finalDigitsToChange = finalDigitsToChange;
     }
 
     private Controller() {
 
     }
 
-    private void loadNumbers() {
-        try {
-
-            if(Files.notExists(oldNumbersPath)){
-                Files.createFile(oldNumbersPath);
-            }
-
-            BufferedReader br = new BufferedReader(new FileReader(oldNumbersPath.toString()));
-
-            String line = br.readLine();
-
-            System.out.println("Start loading db");
-
-            while (line!=null){
-                String[] data = line.split(";");
-                FakeNumber fn;
-                TypeNumber tn;
-                if(data[2].equals("CD")) tn = TypeNumber.CALLED;
-                else tn = TypeNumber.CALLING;
-
-                fn = new FakeNumber(tn,data[1]);
-                addToMap(data[0],fn);
-                line = br.readLine();
-            }
-
-            System.out.println("Finish loading db");
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    void setHideFinaldigits(boolean hideFinaldigits) {
+        this.hideFinaldigits = hideFinaldigits;
     }
 
-    private void readFile(String filePath) throws TooFewDigitsException {
-        /*try {
+    /**
+     * Read the file and analise each line for data.
+     * For each line it writes it in a file.
+     * When the number of lines reaches <i>dimension</i> the new lines will be written in a new file
+     * @param file the file to analise
+     */
+    private void readFile(Path file) {
+        try {
+            //the reader for the file
+            BufferedReader br = new BufferedReader(new FileReader(file.toString()));
 
-            Path path = Paths.get(filePath);
-            //List<String> lines = Files.readAllLines(path, StandardCharsets.UTF_8);
-            //Files.newBufferedReader(path,StandardCharsets.UTF_8);
-            List<String> linesPartitioned = new ArrayList<>(dimension);
-
+            //the fragmentation index for new files
             int fileFragmentation = 1;
-            int numLine=0;
-            int numLinePartitioned=0;
 
-            String partitionedFileName;
-            String newLine;
+            //Where we will store the new path of the fragmented files
+            Path fileToWrite;
 
-            BufferedReader br = new BufferedReader(new FileReader(filePath));
+            //create the first fragmented file
+            fileToWrite = createNewFile(file,fileFragmentation);
+            fileFragmentation++;
 
+            //preparing for writing in the fragmented file
+            Writer output = null;
+            try {
+                output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToWrite.toString(),true),"UTF-8"));
+            } catch (UnsupportedEncodingException | FileNotFoundException e) {
+                e.printStackTrace();
+            }
+
+            //Reading a new line in the file
             String nextLine = br.readLine();
 
+            //Keeping track of:
+            int numLine = 0; //the line of the file for cutting it in fragment
+            int numLineProcessed = 0; //the numbers of line processed in total
+            String firstLine = null;
+            //While we not finish the file
             while (nextLine!=null){
-
-                if(numLine==0){
-                    newLine = firstLineAnalyzator(nextLine);
+                //if it's the first line of the fragmented file
+                if(numLineProcessed==0){
+                    //if if the first line of the file
+                    if(firstLine == null)
+                        //analise the line to search for the index
+                        firstLineAnalyzator(nextLine);
+                        firstLine = nextLine;
+                    assert output != null;
+                    //write in the fragmented file the first line
+                    output.append(firstLine).append("\n");
                 }else{
-                    newLine = lineAnalyzator(nextLine);
-                    numLinePartitioned++;
+                    //analise the line of the file and change numbers
+                    String newLine = lineAnalyzator(nextLine);
+                    //then writing in the fragmented file
+                    output.append(newLine).append("\n");
                 }
-                linesPartitioned.add(newLine);
-                numLine++;
-                //System.out.println(nextLine);
-                nextLine= br.readLine();
 
-
-                if(numLinePartitioned%(dimension/2)==0 && numLinePartitioned!=0) System.out.println("____________HALF________");
-
-                if(numLinePartitioned%10==0 && numLinePartitioned!=0) System.out.println(numLinePartitioned + " lines done!");
-
-                if(numLinePartitioned%dimension==0 && numLinePartitioned!=0){
-                    partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
-                    Path newFilePath =  Paths.get(partitionedFileName);
-                    File newFile = new File(newFilePath.toString());
-                    newFile.createNewFile();
-
-                    Files.write(newFilePath,linesPartitioned,StandardCharsets.UTF_8);
-                    linesPartitioned = new ArrayList<>(dimension);
-                    linesPartitioned.add(firstLine);
-
-                    System.gc();
-
+                //if we have processed 'dimension' lines, it's time to create a new fragment file
+                if(numLine==dimension){
+                    //closing the old one
+                    output.close();
+                    //create the new file
+                    fileToWrite = createNewFile(file,fileFragmentation);
                     fileFragmentation++;
-                    numLinePartitioned=0;
+                    //opening the writing tool
+                    try {
+                        output = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileToWrite.toString(),true),"UTF-8"));
+                    } catch (UnsupportedEncodingException | FileNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                    //writing the first line
+                    output.append(firstLine).append("\n");
+                    numLine=0;
                 }
 
+                numLine++;
+                numLineProcessed++;
+                nextLine = br.readLine();
+
+                if(numLineProcessed%1000000==0 && numLineProcessed!=0) System.out.println(numLineProcessed + " lines done!");
+                if(numLineProcessed%100000==0 && numLineProcessed!=0 && numLineProcessed%1000000!=0) System.out.print(".");
 
             }
 
-            partitionedFileName = path.getParent() + "\\" +  path.getFileName().toString().substring(0,path.getFileName().toString().indexOf("."))+"_" + fileFragmentation + path.getFileName().toString().substring(path.getFileName().toString().indexOf("."));
-            Path newFilePath =  Paths.get(partitionedFileName);
-            File newFile = new File(newFilePath.toString());
-            newFile.createNewFile();
-
-            Files.write(newFilePath,linesPartitioned,StandardCharsets.UTF_8);
+            assert output != null;
+            output.close();
 
             System.gc();
-
-            storeMap();
-
             //Garbage collector
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
-
-        List<String> linesPartitioned = new ArrayList<>(dimension);
-        Path path = Paths.get(filePath);
-
-        int fileFragmentation = 1;
-        int numLine=0;
-        int numLinePartitioned=0;
-
-
-        String newLine;
-
-        FileInputStream inputStream = null;
-        Scanner scanner = null;
-
-        String nextLine;
-
-        try {
-
-            inputStream = new FileInputStream(filePath);
-            scanner = new Scanner(inputStream,"UTF-8");
-
-            while (scanner.hasNextLine()){
-               /*PUT THE CODE HERE*/
-                nextLine = scanner.nextLine();
-                if(numLine==0){
-                    newLine = firstLineAnalyzator(nextLine);
-                }else{
-                    newLine = lineAnalyzator(nextLine);
-                    numLinePartitioned++;
-                }
-                linesPartitioned.add(newLine);
-                numLine++;
-
-                System.out.println(numLinePartitioned);
-
-                if(numLinePartitioned%(dimension/2)==0 && numLinePartitioned!=0) System.out.println("____________HALF________");
-
-                if(numLinePartitioned%dimension==0 && numLinePartitioned!=0){
-                    Files.write(createNewFile(path,fileFragmentation),linesPartitioned,StandardCharsets.UTF_8);
-                    linesPartitioned.clear();
-                    //linesPartitioned = new ArrayList<>(dimension);
-                    linesPartitioned.add(firstLine);
-
-                    System.gc();
-
-                    fileFragmentation++;
-                    numLinePartitioned=0;
-                }
-
-                System.gc();
-            }
-
-            if(numLinePartitioned!=0) {
-                Files.write(createNewFile(path,fileFragmentation), linesPartitioned, StandardCharsets.UTF_8);
-            }
-
-            System.gc();
-
-            storeMap();
-
-            if(scanner.ioException() !=null){
-                throw scanner.ioException();
-            }
 
         } catch (IOException e) {
             e.printStackTrace();
-        }finally {
-            if(inputStream!=null) {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if(scanner!=null) scanner.close();
         }
 
+    }
 
+    private void loadDb() {
+        if(dbFirstLoad){
+            database.loadDataFile();
+            dbFirstLoad=false;
+        }
     }
 
     private Path createNewFile(Path path, int fileFragmentation) throws IOException {
@@ -230,23 +146,6 @@ class Controller {
         return newFilePath;
     }
 
-    private void storeMap() {
-        if(dbModified) {
-            List<String> map = new ArrayList<>();
-
-            for (String key : numberMap.keySet()) {
-                map.add(key + ";" + numberMap.get(key).toString());
-            }
-
-            try {
-                Files.write(oldNumbersPath, map, StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        dbModified=false;
-    }
-
     /**
      * Select and set the columns that we are interested, the calling and the called number columns
      * @param data The data contained in the file that has to be analyzed
@@ -255,31 +154,79 @@ class Controller {
         for(int i = 0; i< data.length; i++){
             if(data[i].equals("CALLING_NUMBER")) positions[0]=i;
             if(data[i].equals("CALLED_PUB_NUMBER")) positions[1]=i;
+            if(data[i].equals("DECO")) positions[2]=i;
         }
     }
 
     /**
      * Gives the new line to put in the file, with the number changed
      * @param line the line of the file to be analyzed
-     * @return
-     * @throws TooFewDigitsException
+     * @return the new line with the modified data
      */
-    private String lineAnalyzator(String line) throws TooFewDigitsException {
+    private String lineAnalyzator(String line) {
         String[] data = line.split("\t");
-        for(int i =0; i<2; i++){
-            try {
-                String oldNumber = data[positions[i]];
-                if(numberMap.containsKey(oldNumber))
-                    data[positions[i]]=numberMap.get(oldNumber).getNumber();
-                else if (oldNumber.length() > 3) {
-                    dbModified = true;
-                    FakeNumber fknbr = new FakeNumber(TypeNumber.CALLED,oldNumber,false);
-                    addToMap(oldNumber,fknbr);
-                    //System.out.println("Add " + oldNumber);
-                    data[positions[i]] = fknbr.getNumber();
+
+        //List<String> possibleDuplicates = new ArrayList<>();
+
+        /*if(data[positions[0]].length()>3) possibleDuplicates.add(data[positions[0]]);
+        data[positions[0]]=changeNumber(data[positions[0]]);*/
+
+        String[] numbers = new String[positions.length];
+
+        for (int i = 0; i < positions.length; i++) {
+            try{
+                numbers[i] = data[positions[i]];
+            }catch (ArrayIndexOutOfBoundsException aobe){
+                //Simply there's not a number
+                numbers[i] = "null";
+            }
+        }
+
+        String[] newnumbers = database.changeNumbers(numbers,hideFinaldigits, finalDigitsToChange);
+
+        /*for (Integer position : positions) {
+            int duplicatePosition = positions.length;
+            boolean foundDuplicate = false;
+            int indexNumberToChange = -1;
+            if (!possibleDuplicates.isEmpty()) {
+                for (int j = 0; j < possibleDuplicates.size(); j++) {
+                    try {
+                        indexNumberToChange = data[position].indexOf(possibleDuplicates.get(j));
+                        if (indexNumberToChange > -1) {
+                            if (j < duplicatePosition) duplicatePosition = j;
+                            break;
+                        }
+                    } catch (ArrayIndexOutOfBoundsException e) {
+                        //System.out.println(line);
+                        //no problem, in the file it doesn't exist the numbers
+                    }
                 }
-            }catch (ArrayIndexOutOfBoundsException ex){
-                //Simply the program have not found neither calling nor called number.
+            }
+            if (foundDuplicate) {
+                try {
+                    data[position] = data[position].substring(0, indexNumberToChange) + data[positions[duplicatePosition]];
+                } catch (StringIndexOutOfBoundsException | ArrayIndexOutOfBoundsException e) {
+                    System.out.println(line);
+                }
+                //data[positions[i]].replace(possibleDuplicates.get(duplicatePosition),data[duplicatePosition]);
+            } else {
+                try {
+                    if (data[position].length() > 3) possibleDuplicates.add(data[position]);
+                    data[position] = changeNumber(data[position]);
+
+                } catch (ArrayIndexOutOfBoundsException e) {
+                    //System.out.println(line);
+                }
+            }
+        }*/
+
+        for (int i = 0; i < positions.length; i++) {
+            try{
+                if (!data[positions[i]].equals("null"))
+                    data[positions[i]] = newnumbers[i];
+                //numbers[i] = data[positions[i]];
+            }catch (ArrayIndexOutOfBoundsException aobe){
+                //Same as above!
             }
         }
 
@@ -293,88 +240,64 @@ class Controller {
         return newDataString.toString();
     }
 
-    private String firstLineAnalyzator(String firstLine){
+    /**
+     * It analise the first line of the file, selecting the index columns that contains data
+     * @param firstLine the first line of the file
+     */
+    private void firstLineAnalyzator(String firstLine){
         String[] data = firstLine.split("\t");
         selectColumns(data);
-        this.firstLine=firstLine;
-        return firstLine;
     }
 
-    private void test(String filePath){
-        FileInputStream inputStream = null;
-        Scanner scanner = null;
-        try {
-
-            inputStream = new FileInputStream(filePath);
-            scanner = new Scanner(inputStream,"UTF-8");
-
-            while (scanner.hasNextLine()){
-                String line = scanner.nextLine();
-                System.out.println(line);
-            }
-
-            if(scanner.ioException() !=null){
-                throw scanner.ioException();
-            }
-
-
-        } catch (IOException e) {
-                e.printStackTrace();
-        }finally {
-            if(inputStream!=null) {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if(scanner!=null) scanner.close();
-        }
-
+    void setPath(File[] selectedFiles) {
+        this.selectedFiles = selectedFiles;
     }
 
-    void readAllFiles(String path) throws TooFewDigitsException {
+    void setDatabase(File selectedFile) {
+        //this.oldNumbersPath = selectedFile.toPath();
+    }
 
+    /**
+     * When an object implementing interface <code>Runnable</code> is used
+     * to create a thread, starting the thread causes the object's
+     * <code>run</code> method to be called in that separately executing
+     * thread.
+     * <p>
+     * The general contract of the method <code>run</code> is that it may
+     * take any action whatsoever.
+     *
+     * @see Thread#run()
+     */
+    @Override
+    public void run() {
+        readAllFiles();
+        //test();
+    }
+
+    /**
+     * Then it takes every file in the memorized file and change the numbers for each of them.
+     * When a file is done, the system memorize all the new numbers both in the file and in memory.
+     * @throws NullPointerException if there are no files in the selectedFiles array.
+     */
+    private void readAllFiles()  {
         if(selectedFiles==null) throw new NullPointerException();
 
-        loadDb();
+        //loadDb();
 
         for (File selectedFile : selectedFiles) {
             if(!selectedFile.getName().contains("corr")){
                 if (selectedFile.getName().contains(".tsv")) {
                     System.out.println("---START " + selectedFile.getName() + "---");
-                    readFile(selectedFile.getPath());
-                    //test(fileEntry.getPath());
+                    readFile(selectedFile.toPath());
                     System.out.println("---FINISH " + selectedFile.getName() + "---");
+                    System.out.println("------------STORING NUMBERS-----------");
+                    //database.storeMap();
+                    System.out.println("--------NUMBER STORED----------------");
                 }
             }
         }
+        System.out.println("File Finished!");
 
     }
-
-    private void loadDb() {
-        if(dbFirstLoad){
-            loadNumbers();
-            dbFirstLoad=false;
-        }
-    }
-
-
-    private void addToMap(String oldNumber, FakeNumber fakeNumber){
-        numberMap.put(oldNumber,fakeNumber);
-
-        //System.out.println("PUT " + oldNumber);
-
-    }
-
-    public void setPath(File[] selectedFiles) {
-        this.selectedFiles = selectedFiles;
-    }
-
-    //TODO Create a file with all the real numbers and the corrisponding fake number with the type (called or calling)
-    //TODO Load that file at the beginning of the app
-
-    //TODO Use a hashMap with a string and an object (Fake number, containing both the fake number and the type)
-
 
 }

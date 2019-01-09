@@ -1,34 +1,36 @@
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 
-public class UserInterface {
+public class UserInterface implements Runnable{
+
+
 
     private JFrame frame;
 
     private JTextArea hideCharText;
     private JRadioButton hideTrue;
     private JRadioButton hideFalse;
-    private ButtonGroup hideButtons;
     private JComboBox<Integer> finalDigitsBox;
     private JButton pathFinder;
+    private JButton dataBaseFinder;
     private JButton goButton;
 
     private JLabel lFinalDigits;
     private JLabel lHideChar;
     private JLabel lHIde;
-    private JLabel lSelectPath;
     private JLabel lPath;
 
     private Controller controller = Controller.getInstance();
 
-    private final static Integer[] finalDigits = {2,3,4,5,6,7};
+    private final static Integer[] finalDigits = {3,4};
 
-    public UserInterface(){
+    UserInterface(){
         initializeElements();
         createWindow();
-        visualizeWindow();
     }
 
     private void initializeElements(){
@@ -36,23 +38,19 @@ public class UserInterface {
         lFinalDigits = new JLabel("Digits to change: ");
         lHIde = new JLabel("Hide");
         lHideChar = new JLabel("Hiding character");
-        lPath = new JLabel("Path: ");
-        lSelectPath = new JLabel();
-
-
-        //lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (2)\\CDR_20181124.tsv");
-        lSelectPath.setText("C:\\Users\\QWMQ5885\\Desktop\\New folder (6)");
-
+        lPath = new JLabel("Path of the files: ");
 
         hideTrue = new JRadioButton("True");
         hideTrue.setMnemonic(KeyEvent.VK_T);
-        hideTrue.setActionCommand("1");
+        hideTrue.addActionListener(e -> controller.setHideFinaldigits(true));
+        //hideTrue.setActionCommand("1");
         hideFalse = new JRadioButton("False");
         hideFalse.setMnemonic(KeyEvent.VK_F);
-        hideFalse.setActionCommand("0");
-        hideButtons = new ButtonGroup();
+        hideFalse.addActionListener(e -> controller.setHideFinaldigits(false));
+        //hideFalse.setActionCommand("0");
+        ButtonGroup hideButtons = new ButtonGroup();
         hideButtons.add(hideFalse);
-        //hideButtons.add(hideTrue);
+        hideButtons.add(hideTrue);
         hideFalse.setSelected(true);
         hideTrue.addActionListener(e -> hideCharText.setEnabled(true));
         hideFalse.addActionListener(e -> hideCharText.setEnabled(false));
@@ -60,16 +58,27 @@ public class UserInterface {
         hideCharText = new JTextArea();
 
         finalDigitsBox = new JComboBox<>(finalDigits);
+        finalDigitsBox.addActionListener(e -> controller.setFinalDigitsToChange(finalDigitsBox.getItemAt(finalDigitsBox.getSelectedIndex())));
 
         pathFinder = new JButton("Find");
-        pathFinder.addActionListener((e) -> chosePath());
-        //TODO search for the folder finder
+        pathFinder.addActionListener((e) -> choseFiles());
+
+        dataBaseFinder = new JButton("Find Database");
+        dataBaseFinder.addActionListener(e -> databasePath());
 
         goButton = new JButton("Go");
         goButton.addActionListener(e -> changeNumbers());
     }
 
-    private void chosePath() {
+    private void databasePath() {
+        JFileChooser chooser = new JFileChooser();
+        int returnVal = chooser.showOpenDialog(null);
+        if(returnVal==JFileChooser.APPROVE_OPTION){
+            controller.setDatabase(chooser.getSelectedFile());
+        }
+    }
+
+    private void choseFiles() {
         JFileChooser chooser = new JFileChooser();
         FileNameExtensionFilter filter = new FileNameExtensionFilter("TSV File","tsv");
         chooser.setFileFilter(filter);
@@ -95,7 +104,7 @@ public class UserInterface {
         hideCharPanel.setLayout(new GridLayout(1,2));
 
         panel.add(lPath);
-        panel.add(lSelectPath);
+        //panel.add(dataBaseFinder);
         panel.add(pathFinder);
 
         digitsPanel.add(lFinalDigits);
@@ -112,7 +121,7 @@ public class UserInterface {
 
         panel.add(digitsPanel);
         panel.add(hidePanel);
-        panel.add(hideCharPanel);
+        //panel.add(hideCharPanel);
 
         frame = new JFrame("Change Numbers");
 
@@ -122,7 +131,7 @@ public class UserInterface {
         frame.add(panel,BorderLayout.NORTH);
         frame.add(goButton,BorderLayout.SOUTH);
 
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     }
 
     private void visualizeWindow() {
@@ -131,29 +140,36 @@ public class UserInterface {
 
     private void changeNumbers() {
         JOptionPane.showMessageDialog(frame,finalDigitsBox.getSelectedItem().toString());
-        JOptionPane.showMessageDialog(frame,hideButtons.getSelection().getActionCommand());
-        JOptionPane.showMessageDialog(frame,hideCharText.getText());
-        JOptionPane.showMessageDialog(frame,lSelectPath.getText());
+        //JOptionPane.showMessageDialog(frame,hideButtons.getSelection().getActionCommand());
+        //JOptionPane.showMessageDialog(frame,hideCharText.getText());
+        //JOptionPane.showMessageDialog(frame,lSelectPath.getText());
 
         //JOptionPane.showMessageDialog(frame,controller.test(lSelectPath.getText()));
 
+        Thread control = new Thread(controller);
+        control.setPriority(Thread.MAX_PRIORITY);
         try {
-            controller.readAllFiles(lSelectPath.getText());
-            //controller.readFile(lSelectPath.getText());
+            control.run();
+            //controller.readAllFiles();
         } catch (NullPointerException e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(frame,"No Files Selected");
-        } catch (TooFewDigitsException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(frame,"Too few digits");
         }
-
-
-        //TODO call controller method after controlling all fields
     }
 
-    public static void main (String[] args){
-        new UserInterface();
+    /**
+     * When an object implementing interface <code>Runnable</code> is used
+     * to create a thread, starting the thread causes the object's
+     * <code>run</code> method to be called in that separately executing
+     * thread.
+     * <p>
+     * The general contract of the method <code>run</code> is that it may
+     * take any action whatsoever.
+     *
+     * @see Thread#run()
+     */
+    @Override
+    public void run() {
+        visualizeWindow();
     }
-
 }
